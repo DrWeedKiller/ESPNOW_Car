@@ -6,7 +6,7 @@
 #define SWITCH_PIN 25
 
 // REPLACE WITH YOUR RECEIVER MAC Address
-uint8_t receiverMacAddress[] = {0xAC,0x67,0xB2,0x36,0x7F,0x28};  //AC:67:B2:36:7F:28
+uint8_t receiverMacAddress[] = {0x30,0xc6,0xF7,0x43,0x45,0x1C};  //1C:45:43:F7:C6:30
 
 struct PacketData
 {
@@ -45,16 +45,50 @@ int mapAndAdjustJoystickDeadBandValues(int value, bool reverse)
 // callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
-  Serial.print("\r\nLast Packet Send Status:\t ");
-  Serial.println(status);
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Message sent" : "Message failed");
+  Serial.print("Last Packet Send Status: ");
+  Serial.print(status);
+  Serial.print(" (");
+  
+  switch(status) {
+    case ESP_NOW_SEND_SUCCESS:
+      Serial.println("SUCCESS)");
+      break;
+    case ESP_NOW_SEND_FAIL:
+      Serial.println("FAIL - Check MAC address and receiver)");
+      break;
+    default:
+      Serial.println("UNKNOWN)");
+      break;
+  }
+}
+
+void printMacAddress() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("Transmitter MAC Address: ");
+  for (int i = 0; i < 6; i++) {
+    if (i > 0) Serial.print(":");
+    if (mac[i] < 16) Serial.print("0");
+    Serial.print(mac[i], HEX);
+  }
+  Serial.println();
 }
 
 void setup() 
 {
-  
   Serial.begin(115200);
+  
+  // Print this device's MAC address for debugging
   WiFi.mode(WIFI_STA);
+  printMacAddress();
+  
+  Serial.print("Target receiver MAC: ");
+  for (int i = 0; i < 6; i++) {
+    if (i > 0) Serial.print(":");
+    if (receiverMacAddress[i] < 16) Serial.print("0");
+    Serial.print(receiverMacAddress[i], HEX);
+  }
+  Serial.println();
 
   // Init ESP-NOW
   if (esp_now_init() != ESP_OK) 
@@ -64,7 +98,7 @@ void setup()
   }
   else
   {
-    Serial.println("Succes: Initialized ESP-NOW");
+    Serial.println("Success: Initialized ESP-NOW");
   }
 
   esp_now_register_send_cb(OnDataSent);
@@ -83,10 +117,13 @@ void setup()
   }
   else
   {
-    Serial.println("Succes: Added peer");
+    Serial.println("Success: Added peer");
   } 
 
-  pinMode(SWITCH_PIN, INPUT_PULLUP);   
+  pinMode(SWITCH_PIN, INPUT_PULLUP);
+  
+  Serial.println("Setup complete. Starting transmission...");
+  delay(1000);
 }
  
 void loop() 
@@ -100,15 +137,26 @@ void loop()
     data.switchPressed = true;
   }
   
+  // Print data being sent for debugging
+  Serial.print("Sending - X: ");
+  Serial.print(data.xAxisValue);
+  Serial.print(", Y: ");
+  Serial.print(data.yAxisValue);
+  Serial.print(", Switch: ");
+  Serial.print(data.switchPressed);
+  Serial.print(" -> ");
+  
   esp_err_t result = esp_now_send(receiverMacAddress, (uint8_t *) &data, sizeof(data));
   if (result == ESP_OK) 
   {
-    Serial.println("Sent with success");
+    Serial.print("Send initiated successfully");
   }
   else 
   {
-    Serial.println("Error sending the data");
+    Serial.print("Error initiating send: ");
+    Serial.print(result);
   }    
+  Serial.println();
   
   if (data.switchPressed == true)
   {
@@ -116,6 +164,6 @@ void loop()
   }
   else
   {
-    delay(50);
+    delay(100); // Increased delay to reduce spam
   }
 }

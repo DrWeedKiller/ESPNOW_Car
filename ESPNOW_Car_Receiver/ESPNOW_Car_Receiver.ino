@@ -30,8 +30,8 @@ PacketData receiverData;
 
 bool throttleAndSteeringMode = false;
 
-// callback function that will be executed when data is received
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) 
+// Updated callback function signature for newer ESP32 core
+void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) 
 {
   if (len == 0)
   {
@@ -157,15 +157,12 @@ void setUpPinModes()
   pinMode(leftMotorPin1,OUTPUT);
   pinMode(leftMotorPin2,OUTPUT);
 
-  //Set up PWM for motor speed
-  ledcSetup(rightMotorPWMSpeedChannel, PWMFreq, PWMResolution);
-  ledcSetup(leftMotorPWMSpeedChannel, PWMFreq, PWMResolution);  
-  ledcAttachPin(enableRightMotor, rightMotorPWMSpeedChannel);
-  ledcAttachPin(enableLeftMotor, leftMotorPWMSpeedChannel); 
+  // Updated PWM setup for newer ESP32 core
+  ledcAttach(enableRightMotor, PWMFreq, PWMResolution);
+  ledcAttach(enableLeftMotor, PWMFreq, PWMResolution);
   
   rotateMotor(0, 0);
 }
-
 
 void setup() 
 {
